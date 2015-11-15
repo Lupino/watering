@@ -18,7 +18,7 @@ boolean currentButton1 = LOW;
 boolean lastButton2 = LOW;
 boolean currentButton2 = LOW;
 boolean output = LOW;
-const int timeout = 60;
+const float timeout = 60.0;
 const int TOTAL_JOBS = 20;
 
 int menuType = 0;
@@ -118,7 +118,7 @@ void settingTime(Time t) {
     boolean isChangedMinute = false;
     boolean isChangedSecond = false;
     boolean rerender = true;
-    int waiting = 0;
+    float waiting = 0;
     while (1) {
         waiting += 0.1;
         if (waiting > timeout) {
@@ -272,9 +272,15 @@ void printJobs() {
     char line[16];
     boolean next = true;
 
+    float waiting = 0;
     while (1) {
+        waiting += 0.1;
+        if (waiting > timeout) {
+           break;
+        }
 
         if (next) {
+            waiting = 0;
             next = false;
             EEPROM.get(eeAddress, job);
 
@@ -328,7 +334,7 @@ void editJob(int jobID, int eeAddress) {
     int step = 0;
     char line[16];
     lcd.blink();
-    int waiting = 0;
+    float waiting = 0;
     while (1) {
         waiting += 0.1;
         if (waiting > timeout) {
@@ -456,7 +462,7 @@ int showMenu() {
     int select = 0;
     boolean rerender = true;
     lcd.blink();
-    int waiting = 0;
+    float waiting = 0;
     while (1) {
         waiting += 0.1;
         if (waiting > timeout) {
