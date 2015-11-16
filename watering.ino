@@ -11,7 +11,6 @@ DS1302 rtc(8, 7, 6);
 
 const int BUTTON_1 = 2;
 const int BUTTON_2 = 3;
-const int OUTPUT_PIN = 4;
 
 boolean lastButton1 = LOW;
 boolean currentButton1 = LOW;
@@ -24,8 +23,8 @@ const int TOTAL_JOBS = 20;
 int menuType = 0;
 
 struct Job {
-    uint8_t duration; // running time
-    uint8_t schedAt; // schedule at
+    uint8_t duration; // running time second
+    uint8_t schedAt; // schedule at second
 
     byte port; // the output port
 
@@ -337,8 +336,13 @@ void editJob(int jobID, int eeAddress) {
     char line[16];
     lcd.blink();
     float waiting = 0;
-    int hour = job.schedAt / 60;
-    int minute = job.schedAt % 60;
+    int hour = job.schedAt / 3600;
+    int minute = (job.schedAt % 3600) / 60;
+    int second = (job.schedAt % 3600) % 60;
+
+    int duration_hour = job.duration / 3600;
+    int duration_minute = (job.duration % 3600) / 60;
+    int duration_second = (job.duration % 3600) % 60;
     while (1) {
         waiting += 0.1;
         if (waiting > timeout) {
@@ -353,7 +357,10 @@ void editJob(int jobID, int eeAddress) {
                 case 1:
                 case 2:
                 case 3:
-                    snprintf(line, sizeof(line), "#%02d %02d:%02d", jobID, hour, minute);
+                case 4:
+                case 5:
+                case 6:
+                    snprintf(line, sizeof(line), "#%02d %02d:%02d:%02d", jobID, hour, minute, second);
                     lcd.setCursor(0, 0);
                     lcd.print(line);
                     lcd.setCursor(13, 0);
@@ -363,12 +370,12 @@ void editJob(int jobID, int eeAddress) {
                         lcd.print("off");
                     }
 
-                    snprintf(line, sizeof(line), "durat: %d min", job.duration);
+                    snprintf(line, sizeof(line), "durat: %02d:%02d:%02d", duration_hour, duration_minute, duration_second);
                     lcd.setCursor(0, 1);
                     lcd.print(line);
                     break;
-                case 4:
-                case 5:
+                case 7:
+                case 8:
                     lcd.setCursor(0, 0);
                     lcd.print("repeat:");
                     lcd.setCursor(13, 0);
@@ -389,16 +396,25 @@ void editJob(int jobID, int eeAddress) {
             case 1: // minute
                 lcd.setCursor(7, 0);
                 break;
-            case 2: // enable
+            case 2: // second
+                lcd.setCursor(10, 0);
+                break;
+            case 3: // enable
                 lcd.setCursor(13, 0);
                 break;
-            case 3: // duration
+            case 4: // duration hour
                 lcd.setCursor(7, 1);
                 break;
-            case 4: // repeat
+            case 5: // duration minute
+                lcd.setCursor(10, 1);
+                break;
+            case 6: // duration second
+                lcd.setCursor(13, 1);
+                break;
+            case 7: // repeat
                 lcd.setCursor(13, 0);
                 break;
-            case 5: // port
+            case 8: // port
                 lcd.setCursor(6, 1);
                 break;
             }
@@ -420,21 +436,39 @@ void editJob(int jobID, int eeAddress) {
                     minute = 0;
                 }
                 break;
-            case 2: // enable
-                job.enable = !job.enable;
-                break;
-            case 3: // duration
-                job.duration += 1;
-                if (job.duration >= 120) {
-                    job.duration = 1;
+            case 2: // second
+                second += 1;
+                if (second > 59) {
+                    second = 0;
                 }
                 break;
-            case 4: // repeat
+            case 3: // enable
+                job.enable = !job.enable;
+                break;
+            case 4: // duration hour
+                duration_hour += 1;
+                if (duration_hour > 12) {
+                    duration_hour = 0;
+                }
+                break;
+            case 5: // duration minute
+                duration_minute += 1;
+                if (duration_minute > 59) {
+                    duration_minute = 0;
+                }
+                break;
+            case 6: // duration second
+                duration_second += 1;
+                if (duration_second > 59) {
+                    duration_second = 0;
+                }
+                break;
+            case 7: // repeat
                 job.repeat = !job.repeat;
                 break;
-            case 5: // port
+            case 8: // port
                 job.port += 1;
-                if (job.port > 4) {
+                if (job.port >= TOTAL_PORT) {
                     job.port = 0;
                 }
                 break;
@@ -446,7 +480,7 @@ void editJob(int jobID, int eeAddress) {
         if (lastButton1 == LOW && currentButton1 == HIGH) {
             rerender = true;
             step += 1;
-            if (step > 5 || backToMenu()) {
+            if (step > 8 || backToMenu()) {
                 break;
             }
         }
@@ -455,7 +489,8 @@ void editJob(int jobID, int eeAddress) {
     }
     lcd.noBlink();
 
-    job.schedAt = hour * 60 + minute;
+    job.schedAt = hour * 3600 + minute * 60 + second;
+    job.duration = duration_hour * 3600 + duration_minute * 60 + duration_second;
     EEPROM.put(eeAddress, job);
 }
 
@@ -479,9 +514,13 @@ void resetJobs() {
 void checkAndRunJobs(Time t) {
     int eeAddress = 0;
     Job job;
-    boolean run = false;
+    boolean ports[TOTAL_PORT];
 
-    int current = t.hr * 60 + t.min;
+    for (int i=0;i<TOTAL_PORT;i++) {
+        ports[i] = false;
+    }
+
+    int current = t.hr * 3600 + t.min * 60 + t.sec;
     for (int i=0; i<=TOTAL_JOBS; i++) {
         EEPROM.get(eeAddress, job);
         eeAddress += sizeof(job);
