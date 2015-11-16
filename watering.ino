@@ -284,7 +284,7 @@ void printJobs() {
     int jobID = 0;
     int eeAddress = 0;
     char line[16];
-    boolean next = true;
+    boolean rerender = true;
 
     float waiting = 0;
     int hour, minute, second, remain;
@@ -294,9 +294,9 @@ void printJobs() {
            break;
         }
 
-        if (next) {
+        if (rerender) {
             waiting = 0;
-            next = false;
+            rerender = false;
             EEPROM.get(eeAddress, job);
 
             hour = job.schedAt / 3600;
@@ -324,7 +324,7 @@ void printJobs() {
 
         currentButton2 = debounce(BUTTON_2, lastButton2);
         if (lastButton2 == LOW && currentButton2 == HIGH) {
-            next = true;
+            rerender = true;
             eeAddress += sizeof(job);
             jobID += 1;
             if (jobID > TOTAL_JOBS) {
@@ -342,6 +342,7 @@ void printJobs() {
             }
 
             editJob(jobID, eeAddress);
+            rerender = true;
         }
         lastButton1 = currentButton1;
         delay(100);
