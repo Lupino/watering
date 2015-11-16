@@ -125,7 +125,6 @@ void settingTime(Time t) {
            break;
         }
         if (rerender) {
-            waiting = 0;
             rerender = false;
             printTime(t);
             switch(type) {
@@ -152,6 +151,7 @@ void settingTime(Time t) {
         currentButton2 = debounce(BUTTON_2, lastButton2);
         if (lastButton2 == LOW && currentButton2 == HIGH) {
             rerender = true;
+            waiting = 0;
             isChanged = true;
             switch(type) {
             case 0: // year
@@ -227,6 +227,7 @@ void settingTime(Time t) {
 
         currentButton1 = debounce(BUTTON_1, lastButton1);
         if (lastButton1 == LOW && currentButton1 == HIGH) {
+            waiting = 0;
             rerender = true;
             type += 1;
             if (type > 5 || backToMenu()) {
