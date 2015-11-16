@@ -317,7 +317,7 @@ void printJobs() {
             remain = job.duration % 3600;
             minute = remain / 60;
             second = remain % 60;
-            snprintf(line, sizeof(line), "durat: %02d:%02d%02d", hour, minute, second);
+            snprintf(line, sizeof(line), "durat: %02d:%02d:%02d", hour, minute, second);
             lcd.setCursor(0, 1);
             lcd.print(line);
         }
