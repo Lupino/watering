@@ -287,6 +287,7 @@ void printJobs() {
     boolean next = true;
 
     float waiting = 0;
+    int hour, minute, second, remain;
     while (1) {
         waiting += 0.1;
         if (waiting > timeout) {
@@ -298,7 +299,11 @@ void printJobs() {
             next = false;
             EEPROM.get(eeAddress, job);
 
-            snprintf(line, sizeof(line), "#%02d %02d:%02d:%02d", jobID, job.schedAt / 3600, (job.schedAt % 3600) / 60, (job.schedAt % 3600) % 60);
+            hour = job.schedAt / 3600;
+            remain = job.schedAt % 3600;
+            minute = remain / 60;
+            second = remain % 60;
+            snprintf(line, sizeof(line), "#%02d %02d:%02d:%02d", jobID, hour, minute, second);
             lcd.setCursor(0, 0);
             lcd.print(line);
             lcd.setCursor(13, 0);
@@ -308,7 +313,11 @@ void printJobs() {
                 lcd.print("off");
             }
 
-            snprintf(line, sizeof(line), "durat: %02d:%02d%02d", job.duration / 3600, (job.duration % 3600) / 60, (job.duration % 3600) % 60);
+            hour = job.duration / 3600;
+            remain = job.duration % 3600;
+            minute = remain / 60;
+            second = remain % 60;
+            snprintf(line, sizeof(line), "durat: %02d:%02d%02d", hour, minute, second);
             lcd.setCursor(0, 1);
             lcd.print(line);
         }
@@ -349,13 +358,16 @@ void editJob(int jobID, int eeAddress) {
     char line[16];
     lcd.blink();
     float waiting = 0;
+    int remain;
     int hour = job.schedAt / 3600;
-    int minute = (job.schedAt % 3600) / 60;
-    int second = (job.schedAt % 3600) % 60;
+    remain = job.schedAt % 3600;
+    int minute = remain / 60;
+    int second = remain % 60;
 
     int duration_hour = job.duration / 3600;
-    int duration_minute = (job.duration % 3600) / 60;
-    int duration_second = (job.duration % 3600) % 60;
+    remain = job.duration % 3600;
+    int duration_minute = remain / 60;
+    int duration_second = remain % 60;
     while (1) {
         waiting += 0.1;
         if (waiting > timeout) {
