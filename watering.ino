@@ -25,9 +25,8 @@ int menuType = 0;
 
 struct Job {
     uint8_t duration; // running time
+    uint8_t schedAt; // schedule at
 
-    uint8_t startMin; // start minute
-    uint8_t startHr; // start hour
 
     boolean once; // every day, once
     boolean enable; // enable or disable
@@ -285,7 +284,7 @@ void printJobs() {
             next = false;
             EEPROM.get(eeAddress, job);
 
-            snprintf(line, sizeof(line), "#%02d %02d:%02d", jobID, job.startHr, job.startMin);
+            snprintf(line, sizeof(line), "#%02d %02d:%02d", jobID, job.schedAt / 60, job.schedAt % 60);
             lcd.setCursor(0, 0);
             lcd.print(line);
             lcd.setCursor(13, 0);
@@ -336,6 +335,8 @@ void editJob(int jobID, int eeAddress) {
     char line[16];
     lcd.blink();
     float waiting = 0;
+    int hour = job.schedAt / 60;
+    int minute = job.schedAt % 60;
     while (1) {
         waiting += 0.1;
         if (waiting > timeout) {
@@ -344,7 +345,7 @@ void editJob(int jobID, int eeAddress) {
         if (rerender) {
             waiting = 0;
             rerender = false;
-            snprintf(line, sizeof(line), "#%02d %02d:%02d", jobID, job.startHr, job.startMin);
+            snprintf(line, sizeof(line), "#%02d %02d:%02d", jobID, hour, minute);
             lcd.setCursor(0, 0);
             lcd.print(line);
             lcd.setCursor(13, 0);
@@ -378,15 +379,15 @@ void editJob(int jobID, int eeAddress) {
             rerender = true;
             switch (step) {
             case 0: // hour
-                job.startHr += 1;
-                if (job.startHr > 23) {
-                    job.startHr = 0;
+                hour += 1;
+                if (hour > 23) {
+                    hour = 0;
                 }
                 break;
             case 1: // minute
-                job.startMin += 1;
-                if (job.startMin > 59) {
-                    job.startMin = 0;
+                minute += 1;
+                if (minute > 59) {
+                    minute = 0;
                 }
                 break;
             case 2: // enable
@@ -414,18 +415,16 @@ void editJob(int jobID, int eeAddress) {
         delay(100);
     }
     lcd.noBlink();
+
+    job.schedAt = hour * 60 + minute;
     EEPROM.put(eeAddress, job);
 }
 
 void resetJobs() {
     Job job = {
         0,
-
         0,
-        0,
-
         false,
-
         false
     };
     int eeAddress = 0;
@@ -441,7 +440,6 @@ void checkAndRunJobs(Time t) {
     Job job;
     boolean run = false;
 
-    int schedAt;
     int current = t.hr * 60 + t.min;
     for (int i=0; i<=TOTAL_JOBS; i++) {
         EEPROM.get(eeAddress, job);
@@ -449,8 +447,7 @@ void checkAndRunJobs(Time t) {
         if (!job.enable) {
             continue;
         }
-        schedAt = job.startHr * 60 + job.startMin;
-        if (schedAt <= current && current <= schedAt + job.duration) {
+        if (job.schedAt <= current && current <= job.schedAt + job.duration) {
             run = true;
         }
     }
