@@ -298,7 +298,7 @@ void printJobs() {
             next = false;
             EEPROM.get(eeAddress, job);
 
-            snprintf(line, sizeof(line), "#%02d %02d:%02d", jobID, job.schedAt / 60, job.schedAt % 60);
+            snprintf(line, sizeof(line), "#%02d %02d:%02d:%02d", jobID, job.schedAt / 3600, (job.schedAt % 3600) / 60, (job.schedAt % 3600) % 60);
             lcd.setCursor(0, 0);
             lcd.print(line);
             lcd.setCursor(13, 0);
@@ -308,7 +308,7 @@ void printJobs() {
                 lcd.print("off");
             }
 
-            snprintf(line, sizeof(line), "durat: %d min", job.duration);
+            snprintf(line, sizeof(line), "durat: %02d:%02d%02d", job.duration / 3600, (job.duration % 3600) / 60, (job.duration % 3600) % 60);
             lcd.setCursor(0, 1);
             lcd.print(line);
         }
