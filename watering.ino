@@ -12,11 +12,21 @@ DS1302 rtc(8, 7, 6);
 const int BUTTON_1 = 2;
 const int BUTTON_2 = 3;
 
+const int OUTPUT_PORT_1 = 4;
+const int OUTPUT_PORT_2 = 9;
+const int OUTPUT_PORT_3 = 10;
+const int OUTPUT_PORT_4 = 11;
+const int OUTPUT_PORT_5 = 12;
+
+const int TOTAL_PORT = 5;
+
+int OUTPUT_PINS[TOTAL_PORT] = {OUTPUT_PORT_1, OUTPUT_PORT_2, OUTPUT_PORT_3, OUTPUT_PORT_4, OUTPUT_PORT_5};
+
 boolean lastButton1 = LOW;
 boolean currentButton1 = LOW;
 boolean lastButton2 = LOW;
 boolean currentButton2 = LOW;
-boolean output = LOW;
+
 const float timeout = 60.0;
 const int TOTAL_JOBS = 20;
 
@@ -97,7 +107,10 @@ void setup() {
 
     pinMode(BUTTON_1, INPUT);
     pinMode(BUTTON_2, INPUT);
-    pinMode(OUTPUT_PIN, OUTPUT);
+    for (int i=0;i<TOTAL_PORT;i++) {
+        pinMode(OUTPUT_PINS[i], OUTPUT);
+    }
+    // pinMode(OUTPUT_PIN, OUTPUT);
 }
 
 boolean debounce(int BUTTON, boolean last) {
@@ -528,11 +541,15 @@ void checkAndRunJobs(Time t) {
             continue;
         }
         if (job.schedAt <= current && current <= job.schedAt + job.duration) {
-            run = true;
+            ports[job.port] = true;
         }
     }
 
-    digitalWrite(OUTPUT_PIN, run);
+
+    for (int i=0;i<TOTAL_PORT;i++) {
+        digitalWrite(OUTPUT_PINS[i], ports[i]);
+    }
+
 }
 
 
