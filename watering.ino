@@ -150,13 +150,16 @@ void settingTime(Time t) {
             case 2: // date
                 lcd.setCursor(8, 0);
                 break;
-            case 3: // hour
+            case 3: // day
+                lcd.setCursor(11, 0);
+                break;
+            case 4: // hour
                 lcd.setCursor(0, 1);
                 break;
-            case 4: // minute
+            case 5: // minute
                 lcd.setCursor(3, 1);
                 break;
-            case 5: // second
+            case 6: // second
                 lcd.setCursor(6, 1);
                 break;
             }
@@ -214,20 +217,45 @@ void settingTime(Time t) {
                     break;
                 }
                 break;
-            case 3: // hour
+            case 3: // day
+                switch (t.day) {
+                    case Time::kSunday:
+                        t.day = Time::kMonday;
+                        break;
+                    case Time::kMonday:
+                        t.day = Time::kThursday;
+                        break;
+                    case Time::kTuesday:
+                        t.day = Time::kWednesday;
+                        break;
+                    case Time::kWednesday:
+                        t.day = Time::kTuesday;
+                        break;
+                    case Time::kThursday:
+                        t.day = Time::kFriday;
+                        break;
+                    case Time::kFriday:
+                        t.day = Time::kSaturday;
+                        break;
+                    case Time::kSaturday:
+                        t.day = Time::kSunday;
+                        break;
+                }
+                break;
+            case 4: // hour
                 t.hr += 1;
                 if (t.hr > 23) {
                     t.hr = 0;
                 }
                 break;
-            case 4: // minute
+            case 5: // minute
                 isChangedMinute = true;
                 t.min += 1;
                 if (t.min > 59) {
                     t.min = 0;
                 }
                 break;
-            case 5: // second
+            case 6: // second
                 isChangedSecond = true;
                 t.sec += 1;
                 if (t.sec > 59) {
