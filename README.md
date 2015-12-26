@@ -13,3 +13,9 @@ material
 * 2 button
 * 1 RTC 1302
 * 1 arduino pro mini or other arduino board
+
+Depends
+-------
+
+* [DS1302](https://github.com/msparks/arduino-ds1302.git)
+* [LiquidCrystal-I2C](https://github.com/fdebrabander/Arduino-LiquidCrystal-I2C-library.git)
