@@ -12,4 +12,4 @@ material
 * 1 i2c LCD
 * 2 button
 * 1 RTC 1302
-* 1 arduino uno
+* 1 arduino pro mini or other arduino board
