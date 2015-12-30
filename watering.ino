@@ -33,8 +33,8 @@ const int TOTAL_JOBS = 20;
 int menuType = 0;
 
 struct Job {
-    uint8_t duration; // running time second
-    uint8_t schedAt; // schedule at second
+    int duration; // running time second
+    int schedAt; // schedule at second
 
     byte port; // the output port
 
