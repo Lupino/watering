@@ -26,6 +26,7 @@ boolean lastButton1 = LOW;
 boolean currentButton1 = LOW;
 boolean lastButton2 = LOW;
 boolean currentButton2 = LOW;
+int lightLoop = 0;
 
 const float timeout = 60.0;
 const int TOTAL_JOBS = 20;
@@ -680,9 +681,18 @@ void loop() {
 
     checkAndRunJobs(t);
 
+    if (lightLoop < 50) {
+        lightLoop += 1;
+        if (lightLoop > 48) {
+            lcd.noBacklight();
+        }
+    }
+
     currentButton1 = debounce(BUTTON_1, lastButton1);
     if (lastButton1 == LOW && currentButton1 == HIGH) {
         lastButton1 = currentButton1;
+        lightLoop = 0;
+        lcd.backlight();
         menuType = showMenu();
     }
     lastButton1 = currentButton1;
