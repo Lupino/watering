@@ -225,7 +225,7 @@ void settingTime(Time t) {
                     case Time::kMonday:
                         t.day = Time::kThursday;
                         break;
-                    case Time::kTuesday:
+                    case Time::kThursday:
                         t.day = Time::kWednesday;
                         break;
                     case Time::kWednesday:
