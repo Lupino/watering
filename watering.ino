@@ -24,6 +24,7 @@ const int OUTPUT_PORT_4 = 11;
 const int TOTAL_PORT = 4;
 int OUTPUT_PINS[TOTAL_PORT] = {OUTPUT_PORT_1, OUTPUT_PORT_2, OUTPUT_PORT_3, OUTPUT_PORT_4/*, OUTPUT_PORT_5*/};
 const boolean RELAY_RUN = LOW;
+const boolean RELAY_NORUN = HIGH;
 boolean PORT_STATUS[TOTAL_PORT];
 
 boolean lastButton1 = LOW;
@@ -605,8 +606,8 @@ void resetJobs() {
 void initRelay() {
     for (int i=0;i<TOTAL_PORT;i++) {
         pinMode(OUTPUT_PINS[i], OUTPUT);
-        digitalWrite(OUTPUT_PINS[i], !RELAY_RUN);
-        PORT_STATUS[i] = !RELAY_RUN;
+        digitalWrite(OUTPUT_PINS[i], RELAY_NORUN);
+        PORT_STATUS[i] = RELAY_NORUN;
     }
 }
 
@@ -630,7 +631,7 @@ void checkAndRunJobs() {
     Time::Day day;
     boolean ports[TOTAL_PORT];
     for (int i=0;i<TOTAL_PORT;i++) {
-        ports[i] = !RELAY_RUN;
+        ports[i] = RELAY_NORUN;
     }
 
     long current = long(currentTime.hr) * 3600 + long(currentTime.min) * 60 + long(currentTime.sec);
@@ -653,7 +654,7 @@ void checkAndRunJobs() {
         }
 
         if (job.repeat == 8) {
-            if (PORT_STATUS[job.port] == RELAY_RUN && ports[job.port] == !RELAY_RUN) {
+            if (PORT_STATUS[job.port] == RELAY_RUN && ports[job.port] == RELAY_NORUN) {
                 job.enable = false;
                 EEPROM.put(eeAddress, job);
             }
