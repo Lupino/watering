@@ -3,7 +3,7 @@ Watering
 
 It's time to watering.
 
-![watering_bb.png](https://raw.githubusercontent.com/Lupino/watering/master/watering_bb.png)
+![watering_bb.png](https://raw.githubusercontent.com/Lupino/watering/master/watering_bb.png?v=0.1)
 
 material
 --------
