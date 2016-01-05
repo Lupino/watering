@@ -132,7 +132,7 @@ void setup() {
     pinMode(BUTTON_2, INPUT);
 
     timer.setInterval(1000, checkAndRunJobs);
-    timer.setInterval(1000, readAndPrintTime);
+    timer.setInterval(250, readAndPrintTime);
 }
 
 boolean debounce(int BUTTON, boolean last) {
@@ -642,10 +642,7 @@ void checkAndRunJobs() {
 }
 
 void readAndPrintTime() {
-    currentTime.sec += 1;
-    if (currentTime.sec > 59) {
-        currentTime = rtc.time();
-    }
+    currentTime = rtc.time();
     if (menuType == 0) {
         printTime(currentTime, forcePrintTime);
         forcePrintTime = false;
