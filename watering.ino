@@ -30,11 +30,10 @@ boolean lastButton1 = LOW;
 boolean currentButton1 = LOW;
 boolean lastButton2 = LOW;
 boolean currentButton2 = LOW;
-int lightLoop = 0;
-boolean forcePrintTime = false;
 
 const float timeout = 60.0;
 const int TOTAL_JOBS = 20;
+boolean forcePrintTime = false;
 
 int menuType = 0;
 Time currentTime = rtc.time();
