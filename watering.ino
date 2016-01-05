@@ -40,6 +40,8 @@ int menuType = 0;
 Time currentTime = rtc.time();
 Time cacheTime = currentTime;
 
+int backlightTimer = -1;
+
 struct Job {
     long duration; // running time second
     long schedAt; // schedule at second
@@ -712,6 +714,10 @@ int showMenu() {
     return select;
 }
 
+void closeLCDBacklight() {
+    lcd.noBacklight();
+}
+
 // Loop and print the time every second.
 void loop() {
     timer.run();
@@ -727,18 +733,12 @@ void loop() {
         break;
     }
 
-    if (lightLoop < 50) {
-        lightLoop += 1;
-        if (lightLoop > 48) {
-            lcd.noBacklight();
-        }
-    }
-
     currentButton1 = debounce(BUTTON_1, lastButton1);
     if (lastButton1 == LOW && currentButton1 == HIGH) {
         lastButton1 = currentButton1;
-        lightLoop = 0;
         lcd.backlight();
+        timer.deleteTimer(backlightTimer);
+        backlightTimer = timer.setTimeout(1000, closeLCDBacklight);
         menuType = showMenu();
         forcePrintTime = true;
     }
