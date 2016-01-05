@@ -3,6 +3,9 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 #include <EEPROM.h>
+#include <SimpleTimer.h>
+
+SimpleTimer timer;
 
 // Set the LCD address to 0x27 for a 16 chars and 2 line display
 LiquidCrystal_I2C lcd(0x27, 16, 2);
@@ -28,11 +31,14 @@ boolean currentButton1 = LOW;
 boolean lastButton2 = LOW;
 boolean currentButton2 = LOW;
 int lightLoop = 0;
+boolean forcePrintTime = false;
 
 const float timeout = 60.0;
 const int TOTAL_JOBS = 20;
 
 int menuType = 0;
+Time currentTime = rtc.time();
+Time cacheTime = currentTime;
 
 struct Job {
     long duration; // running time second
@@ -76,22 +82,36 @@ boolean backToMenu() {
     return false;
 }
 
-void printTime(Time t) {
+void printTime(Time nextTime, boolean force) {
+    if (!force && nextTime.min == cacheTime.min) {
+        if (nextTime.sec != cacheTime.min) {
+            lcd.setCursor(6, 1);
+            if (nextTime.sec < 10) {
+                lcd.print("0");
+                lcd.print(nextTime.sec);
+            } else {
+                lcd.print(nextTime.sec);
+            }
+            cacheTime = nextTime;
+        }
+        return;
+    }
     // Name the day of the week.
-    const String day = dayAsString(t.day);
+    const String day = dayAsString(nextTime.day);
 
     // Format the time and date and insert into the temporary buffer.
     char line1[16];
-    snprintf(line1, sizeof(line1), "%04d-%02d-%02d %s", t.yr, t.mon, t.date, day.c_str());
+    snprintf(line1, sizeof(line1), "%04d-%02d-%02d %s", nextTime.yr, nextTime.mon, nextTime.date, day.c_str());
 
     char line2[16];
-    snprintf(line2, sizeof(line2), "%02d:%02d:%02d", t.hr, t.min, t.sec);
+    snprintf(line2, sizeof(line2), "%02d:%02d:%02d", nextTime.hr, nextTime.min, nextTime.sec);
 
     // Print the formatted string to serial so we can see the time.
     lcd.setCursor(0, 0);
     lcd.print(line1);
     lcd.setCursor(0, 1);
     lcd.print(line2);
+    cacheTime = nextTime;
 }
 
 void setup() {
@@ -101,6 +121,7 @@ void setup() {
     // Turn on the blacklight and print a message.
     lcd.backlight();
     initRelay();
+    initTime();
 
     // Initialize a new chip by turning off write protection and clearing the
     // clock halt flag. These methods needn't always be called. See the DS1302
@@ -110,6 +131,8 @@ void setup() {
 
     pinMode(BUTTON_1, INPUT);
     pinMode(BUTTON_2, INPUT);
+
+    timer.setInterval(1000, readAndPrintTime);
 }
 
 boolean debounce(int BUTTON, boolean last) {
@@ -131,6 +154,7 @@ void settingTime(Time t) {
     boolean isChangedSecond = false;
     boolean rerender = true;
     float waiting = 0;
+    forcePrintTime = true;
     while (1) {
         waiting += 0.1;
         if (waiting > timeout) {
@@ -138,7 +162,8 @@ void settingTime(Time t) {
         }
         if (rerender) {
             rerender = false;
-            printTime(t);
+            printTime(t, forcePrintTime);
+            forcePrintTime = false;
             switch(type) {
             case 0: // year
                 lcd.setCursor(0, 0);
@@ -572,7 +597,11 @@ void initRelay() {
     }
 }
 
-void checkAndRunJobs(Time t) {
+void initTime() {
+    currentTime = rtc.time();
+    printTime(currentTime, true);
+}
+
     int eeAddress = 0;
     Job job;
     boolean ports[TOTAL_PORT];
@@ -601,6 +630,16 @@ void checkAndRunJobs(Time t) {
     }
 }
 
+void readAndPrintTime() {
+    currentTime.sec += 1;
+    if (currentTime.sec > 59) {
+        currentTime = rtc.time();
+    }
+    if (menuType == 0) {
+        printTime(currentTime, forcePrintTime);
+        forcePrintTime = false;
+    }
+}
 
 int showMenu() {
     int select = 0;
@@ -668,15 +707,10 @@ int showMenu() {
 
 // Loop and print the time every second.
 void loop() {
-    // Get the current time and date from the chip.
-    Time t = rtc.time();
-
+    timer.run();
     switch (menuType) {
-    case 0:
-        printTime(t);
-        break;
     case 1:
-        settingTime(t);
+        settingTime(currentTime);
         break;
     case 2:
         printJobs();
@@ -701,6 +735,7 @@ void loop() {
         lightLoop = 0;
         lcd.backlight();
         menuType = showMenu();
+        forcePrintTime = true;
     }
     lastButton1 = currentButton1;
     delay(100);
