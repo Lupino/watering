@@ -47,7 +47,7 @@ struct Job {
 
     byte port; // the output port
 
-    boolean repeat; // every day, once
+    int repeat; // every day, once
     boolean running;
     boolean enable; // enable or disable
 };
@@ -421,6 +421,8 @@ void editJob(int jobID, int eeAddress) {
     remain = job.duration % 3600;
     int duration_minute = remain / 60;
     int duration_second = remain % 60;
+    String dayStr;
+    Time::Day day;
     while (1) {
         waiting += 0.1;
         if (waiting > timeout) {
@@ -457,10 +459,18 @@ void editJob(int jobID, int eeAddress) {
                     lcd.setCursor(0, 0);
                     lcd.print("repeat:");
                     lcd.setCursor(13, 0);
-                    if (job.repeat) {
+                    switch (job.repeat) {
+                    case 0:
                         lcd.print(" on");
-                    } else {
+                        break;
+                    case 8:
                         lcd.print("off");
+                        break;
+                    default:
+                        day = static_cast<Time::Day>(job.repeat);
+                        dayStr = dayAsString(day);
+                        lcd.print(dayStr.c_str());
+                        break;
                     }
                     lcd.setCursor(0, 1);
                     lcd.print("port: ");
@@ -542,7 +552,10 @@ void editJob(int jobID, int eeAddress) {
                 }
                 break;
             case 7: // repeat
-                job.repeat = !job.repeat;
+                job.repeat += 1;
+                if (job.repeat > 8) {
+                    job.repeat = 0;
+                }
                 break;
             case 8: // port
                 job.port += 1;
@@ -577,7 +590,7 @@ void resetJobs() {
         0, // duration
         0, // schedAt
         0, // port
-        false, // repeat
+        8, // repeat
         false, // running
         false // enable
     };
@@ -614,6 +627,7 @@ void initTime() {
 void checkAndRunJobs() {
     int eeAddress = 0;
     Job job;
+    Time::Day day;
     boolean ports[TOTAL_PORT];
     for (int i=0;i<TOTAL_PORT;i++) {
         ports[i] = !RELAY_RUN;
@@ -626,8 +640,23 @@ void checkAndRunJobs() {
         if (!job.enable) {
             continue;
         }
+
+        if (job.repeat > 0 && job.repeat < 8) {
+            day = static_cast<Time::Day>(job.repeat);
+            if (day != currentTime.day) {
+                continue;
+            }
+        }
+
         if (job.schedAt <= current && current <= job.schedAt + job.duration) {
             ports[job.port] = RELAY_RUN;
+        }
+
+        if (job.repeat == 8) {
+            if (PORT_STATUS[job.port] == RELAY_RUN && ports[job.port] == !RELAY_RUN) {
+                job.enable = false;
+                EEPROM.put(eeAddress, job);
+            }
         }
     }
 
