@@ -617,7 +617,7 @@ void initLCD() {
     // Turn on the blacklight and print a message.
     lcd.backlight();
     lcd.print("Starting...");
-    backlightTimer = timer.setTimeout(1000, closeLCDBacklight);
+    backlightTimer = timer.setTimeout(10000, closeLCDBacklight);
 }
 
 void initTime() {
@@ -753,12 +753,12 @@ void loop() {
     case 1:
         timer.deleteTimer(backlightTimer);
         settingTime(currentTime);
-        backlightTimer = timer.setTimeout(1000, closeLCDBacklight);
+        backlightTimer = timer.setTimeout(10000, closeLCDBacklight);
         break;
     case 2:
         timer.deleteTimer(backlightTimer);
         printJobs();
-        backlightTimer = timer.setTimeout(1000, closeLCDBacklight);
+        backlightTimer = timer.setTimeout(10000, closeLCDBacklight);
         break;
     case 3:
         resetJobs();
@@ -771,7 +771,7 @@ void loop() {
         lcd.backlight();
         timer.deleteTimer(backlightTimer);
         menuType = showMenu();
-        backlightTimer = timer.setTimeout(1000, closeLCDBacklight);
+        backlightTimer = timer.setTimeout(10000, closeLCDBacklight);
         forcePrintTime = true;
     }
     lastButton1 = currentButton1;
