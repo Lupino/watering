@@ -13,14 +13,15 @@ const int BUTTON_1 = 2;
 const int BUTTON_2 = 3;
 
 const int OUTPUT_PORT_1 = 4;
-const int OUTPUT_PORT_2 = 9;
+const int OUTPUT_PORT_2 = 5;
 const int OUTPUT_PORT_3 = 10;
 const int OUTPUT_PORT_4 = 11;
-const int OUTPUT_PORT_5 = 12;
+// const int OUTPUT_PORT_5 = 13;
 
-const int TOTAL_PORT = 5;
-
-int OUTPUT_PINS[TOTAL_PORT] = {OUTPUT_PORT_1, OUTPUT_PORT_2, OUTPUT_PORT_3, OUTPUT_PORT_4, OUTPUT_PORT_5};
+const int TOTAL_PORT = 4;
+int OUTPUT_PINS[TOTAL_PORT] = {OUTPUT_PORT_1, OUTPUT_PORT_2, OUTPUT_PORT_3, OUTPUT_PORT_4/*, OUTPUT_PORT_5*/};
+const boolean RELAY_RUN = LOW;
+boolean PORT_STATUS[TOTAL_PORT];
 
 boolean lastButton1 = LOW;
 boolean currentButton1 = LOW;
@@ -99,6 +100,7 @@ void setup() {
 
     // Turn on the blacklight and print a message.
     lcd.backlight();
+    initRelay();
 
     // Initialize a new chip by turning off write protection and clearing the
     // clock halt flag. These methods needn't always be called. See the DS1302
@@ -108,10 +110,6 @@ void setup() {
 
     pinMode(BUTTON_1, INPUT);
     pinMode(BUTTON_2, INPUT);
-    for (int i=0;i<TOTAL_PORT;i++) {
-        pinMode(OUTPUT_PINS[i], OUTPUT);
-    }
-    // pinMode(OUTPUT_PIN, OUTPUT);
 }
 
 boolean debounce(int BUTTON, boolean last) {
@@ -566,13 +564,20 @@ void resetJobs() {
     menuType = 0;
 }
 
+void initRelay() {
+    for (int i=0;i<TOTAL_PORT;i++) {
+        pinMode(OUTPUT_PINS[i], OUTPUT);
+        digitalWrite(OUTPUT_PINS[i], !RELAY_RUN);
+        PORT_STATUS[i] = !RELAY_RUN;
+    }
+}
+
 void checkAndRunJobs(Time t) {
     int eeAddress = 0;
     Job job;
     boolean ports[TOTAL_PORT];
-
     for (int i=0;i<TOTAL_PORT;i++) {
-        ports[i] = false;
+        ports[i] = !RELAY_RUN;
     }
 
     long current = t.hr * 3600 + t.min * 60 + t.sec;
@@ -583,15 +588,17 @@ void checkAndRunJobs(Time t) {
             continue;
         }
         if (job.schedAt <= current && current <= job.schedAt + job.duration) {
-            ports[job.port] = true;
+            ports[job.port] = RELAY_RUN;
         }
     }
 
 
     for (int i=0;i<TOTAL_PORT;i++) {
-        digitalWrite(OUTPUT_PINS[i], ports[i]);
+        if (PORT_STATUS[i] != ports[i]) {
+            digitalWrite(OUTPUT_PINS[i], ports[i]);
+            PORT_STATUS[i] = ports[i];
+        }
     }
-
 }
 
 
