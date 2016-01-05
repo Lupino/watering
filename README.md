@@ -19,3 +19,4 @@ Depends
 
 * [DS1302](https://github.com/msparks/arduino-ds1302.git)
 * [LiquidCrystal-I2C](https://github.com/fdebrabander/Arduino-LiquidCrystal-I2C-library.git)
+* [SimpleTimer](https://github.com/jfturcot/SimpleTimer)
