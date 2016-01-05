@@ -222,13 +222,13 @@ void settingTime(Time t) {
                         t.day = Time::kMonday;
                         break;
                     case Time::kMonday:
-                        t.day = Time::kThursday;
+                        t.day = Time::kTuesday;
                         break;
-                    case Time::kThursday:
+                    case Time::kTuesday:
                         t.day = Time::kWednesday;
                         break;
                     case Time::kWednesday:
-                        t.day = Time::kTuesday;
+                        t.day = Time::kThursday;
                         break;
                     case Time::kThursday:
                         t.day = Time::kFriday;
