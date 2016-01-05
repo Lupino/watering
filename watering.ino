@@ -34,8 +34,8 @@ const int TOTAL_JOBS = 20;
 int menuType = 0;
 
 struct Job {
-    int duration; // running time second
-    int schedAt; // schedule at second
+    long duration; // running time second
+    long schedAt; // schedule at second
 
     byte port; // the output port
 
@@ -316,7 +316,7 @@ void printJobs() {
     boolean rerender = true;
 
     float waiting = 0;
-    int hour, minute, second, remain;
+    long hour, minute, second, remain;
     while (1) {
         waiting += 0.1;
         if (waiting > timeout) {
@@ -388,16 +388,16 @@ void editJob(int jobID, int eeAddress) {
     char line[16];
     lcd.blink();
     float waiting = 0;
-    int remain;
-    int hour = job.schedAt / 3600;
+    long remain;
+    long hour = job.schedAt / 3600;
     remain = job.schedAt % 3600;
-    int minute = remain / 60;
-    int second = remain % 60;
+    long minute = remain / 60;
+    long second = remain % 60;
 
-    int duration_hour = job.duration / 3600;
+    long duration_hour = job.duration / 3600;
     remain = job.duration % 3600;
-    int duration_minute = remain / 60;
-    int duration_second = remain % 60;
+    long duration_minute = remain / 60;
+    long duration_second = remain % 60;
     while (1) {
         waiting += 0.1;
         if (waiting > timeout) {
@@ -575,7 +575,7 @@ void checkAndRunJobs(Time t) {
         ports[i] = false;
     }
 
-    int current = t.hr * 3600 + t.min * 60 + t.sec;
+    long current = t.hr * 3600 + t.min * 60 + t.sec;
     for (int i=0; i<=TOTAL_JOBS; i++) {
         EEPROM.get(eeAddress, job);
         eeAddress += sizeof(job);
