@@ -25,7 +25,7 @@ const int TOTAL_PORT = 4;
 int OUTPUT_PINS[TOTAL_PORT] = {OUTPUT_PORT_1, OUTPUT_PORT_2, OUTPUT_PORT_3, OUTPUT_PORT_4/*, OUTPUT_PORT_5*/};
 const boolean RELAY_RUN = LOW;
 const boolean RELAY_NORUN = HIGH;
-boolean PORT_STATUS[TOTAL_PORT];
+boolean RELAY_STATE[TOTAL_PORT];
 
 boolean lastButton1 = LOW;
 boolean currentButton1 = LOW;
@@ -607,7 +607,7 @@ void initRelay() {
     for (int i=0;i<TOTAL_PORT;i++) {
         pinMode(OUTPUT_PINS[i], OUTPUT);
         digitalWrite(OUTPUT_PINS[i], RELAY_NORUN);
-        PORT_STATUS[i] = RELAY_NORUN;
+        RELAY_STATE[i] = RELAY_NORUN;
     }
 }
 
@@ -654,7 +654,7 @@ void checkAndRunJobs() {
         }
 
         if (job.repeat == 8) {
-            if (PORT_STATUS[job.port] == RELAY_RUN && ports[job.port] == RELAY_NORUN) {
+            if (RELAY_STATE[job.port] == RELAY_RUN && ports[job.port] == RELAY_NORUN) {
                 job.enable = false;
                 EEPROM.put(eeAddress, job);
             }
@@ -663,9 +663,9 @@ void checkAndRunJobs() {
 
 
     for (int i=0;i<TOTAL_PORT;i++) {
-        if (PORT_STATUS[i] != ports[i]) {
+        if (RELAY_STATE[i] != ports[i]) {
             digitalWrite(OUTPUT_PINS[i], ports[i]);
-            PORT_STATUS[i] = ports[i];
+            RELAY_STATE[i] = ports[i];
         }
     }
 }
