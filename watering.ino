@@ -132,6 +132,7 @@ void setup() {
     pinMode(BUTTON_1, INPUT);
     pinMode(BUTTON_2, INPUT);
 
+    timer.setInterval(1000, checkAndRunJobs);
     timer.setInterval(1000, readAndPrintTime);
 }
 
@@ -602,6 +603,7 @@ void initTime() {
     printTime(currentTime, true);
 }
 
+void checkAndRunJobs() {
     int eeAddress = 0;
     Job job;
     boolean ports[TOTAL_PORT];
@@ -609,7 +611,7 @@ void initTime() {
         ports[i] = !RELAY_RUN;
     }
 
-    long current = t.hr * 3600 + t.min * 60 + t.sec;
+    long current = currentTime.hr * 3600 + currentTime.min * 60 + currentTime.sec;
     for (int i=0; i<=TOTAL_JOBS; i++) {
         EEPROM.get(eeAddress, job);
         eeAddress += sizeof(job);
@@ -719,8 +721,6 @@ void loop() {
         resetJobs();
         break;
     }
-
-    checkAndRunJobs(t);
 
     if (lightLoop < 50) {
         lightLoop += 1;
