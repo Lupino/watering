@@ -8,7 +8,7 @@
 SimpleTimer timer;
 
 // Set the LCD address to 0x27 for a 16 chars and 2 line display
-LiquidCrystal_I2C lcd(0x27, 16, 2);
+LiquidCrystal_I2C lcd(0x3f, 16, 2);
 
 DS1302 rtc(8, 7, 6);
 
@@ -115,11 +115,8 @@ void printTime(Time nextTime, boolean force) {
 }
 
 void setup() {
-    // initialize the LCD
-    lcd.begin();
+    initLCD();
 
-    // Turn on the blacklight and print a message.
-    lcd.backlight();
     initRelay();
     initTime();
 
@@ -596,6 +593,14 @@ void initRelay() {
         digitalWrite(OUTPUT_PINS[i], !RELAY_RUN);
         PORT_STATUS[i] = !RELAY_RUN;
     }
+}
+
+void initLCD() {
+    // initialize the LCD
+    lcd.begin();
+    // Turn on the blacklight and print a message.
+    lcd.backlight();
+    lcd.print("Starting...");
 }
 
 void initTime() {
