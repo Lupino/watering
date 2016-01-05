@@ -339,7 +339,8 @@ void printJobs() {
     boolean rerender = true;
 
     float waiting = 0;
-    long hour, minute, second, remain;
+    int hour, minute, second;
+    long remain;
     while (1) {
         waiting += 0.1;
         if (waiting > timeout) {
@@ -412,15 +413,15 @@ void editJob(int jobID, int eeAddress) {
     lcd.blink();
     float waiting = 0;
     long remain;
-    long hour = job.schedAt / 3600;
+    int hour = job.schedAt / 3600;
     remain = job.schedAt % 3600;
-    long minute = remain / 60;
-    long second = remain % 60;
+    int minute = remain / 60;
+    int second = remain % 60;
 
-    long duration_hour = job.duration / 3600;
+    int duration_hour = job.duration / 3600;
     remain = job.duration % 3600;
-    long duration_minute = remain / 60;
-    long duration_second = remain % 60;
+    int duration_minute = remain / 60;
+    int duration_second = remain % 60;
     while (1) {
         waiting += 0.1;
         if (waiting > timeout) {
@@ -567,8 +568,8 @@ void editJob(int jobID, int eeAddress) {
     }
     lcd.noBlink();
 
-    job.schedAt = hour * 3600 + minute * 60 + second;
-    job.duration = duration_hour * 3600 + duration_minute * 60 + duration_second;
+    job.schedAt = long(hour) * 3600 + long(minute) * 60 + long(second);
+    job.duration = long(duration_hour) * 3600 + long(duration_minute) * 60 + long(duration_second);
     EEPROM.put(eeAddress, job);
 }
 
@@ -619,7 +620,7 @@ void checkAndRunJobs() {
         ports[i] = !RELAY_RUN;
     }
 
-    long current = currentTime.hr * 3600 + currentTime.min * 60 + currentTime.sec;
+    long current = long(currentTime.hr) * 3600 + long(currentTime.min) * 60 + long(currentTime.sec);
     for (int i=0; i<=TOTAL_JOBS; i++) {
         EEPROM.get(eeAddress, job);
         eeAddress += sizeof(job);
