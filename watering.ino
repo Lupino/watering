@@ -53,6 +53,39 @@ struct Job {
     boolean enable; // enable or disable
 };
 
+int select;
+boolean rerender;
+float waiting;
+int eeAddress;
+Job job;
+Time::Day day;
+boolean ports[TOTAL_PORT];
+long current;
+int step;
+char line[16];
+long remain;
+int hour;
+int minute;
+int second;
+int duration_hour;
+int duration_minute;
+int duration_second;
+String dayStr;
+int i;
+int count;
+int type;
+boolean isChanged;
+boolean isChangedMinute;
+boolean isChangedSecond;
+int jobID;
+boolean currentState;
+
+void initLCD();
+void initRelay();
+void initTime();
+void checkAndRunJobs();
+void readAndPrintTime();
+
 String dayAsString(const Time::Day day) {
     switch (day) {
         case Time::kSunday: return "Sun";
@@ -67,7 +100,7 @@ String dayAsString(const Time::Day day) {
 }
 
 boolean backToMenu() {
-    int count = 0;
+    count = 0;
     while (count < 10) {
         delay(100);
         currentButton1 = debounce(BUTTON_1, lastButton1);
@@ -99,20 +132,17 @@ void printTime(Time nextTime, boolean force) {
         return;
     }
     // Name the day of the week.
-    const String day = dayAsString(nextTime.day);
+    dayStr = dayAsString(nextTime.day);
 
     // Format the time and date and insert into the temporary buffer.
-    char line1[16];
-    snprintf(line1, sizeof(line1), "%04d-%02d-%02d %s", nextTime.yr, nextTime.mon, nextTime.date, day.c_str());
-
-    char line2[16];
-    snprintf(line2, sizeof(line2), "%02d:%02d:%02d", nextTime.hr, nextTime.min, nextTime.sec);
-
     // Print the formatted string to serial so we can see the time.
+    snprintf(line, sizeof(line), "%04d-%02d-%02d %s", nextTime.yr, nextTime.mon, nextTime.date, dayStr.c_str());
     lcd.setCursor(0, 0);
-    lcd.print(line1);
+    lcd.print(line);
+
+    snprintf(line, sizeof(line), "%02d:%02d:%02d", nextTime.hr, nextTime.min, nextTime.sec);
     lcd.setCursor(0, 1);
-    lcd.print(line2);
+    lcd.print(line);
     cacheTime = nextTime;
 }
 
@@ -136,25 +166,24 @@ void setup() {
 }
 
 boolean debounce(int BUTTON, boolean last) {
-    boolean current = digitalRead(BUTTON);
-    if (last != current) {
+    currentState = digitalRead(BUTTON);
+    if (last != currentState) {
         delay(5);
-        current = digitalRead(BUTTON);
+        currentState = digitalRead(BUTTON);
     }
 
-    return current;
+    return currentState;
 }
 
 void settingTime(Time t) {
     // lcd.cursor();
     lcd.blink();
-    int type = 0;
-    boolean isChanged = false;
-    boolean isChangedMinute = false;
-    boolean isChangedSecond = false;
-    boolean rerender = true;
-    float waiting = 0;
-    forcePrintTime = true;
+    type = 0;
+    isChanged = false;
+    isChangedMinute = false;
+    isChangedSecond = false;
+    rerender = true;
+    waiting = 0;
     while (1) {
         waiting += 0.1;
         if (waiting > timeout) {
@@ -162,8 +191,7 @@ void settingTime(Time t) {
         }
         if (rerender) {
             rerender = false;
-            printTime(t, forcePrintTime);
-            forcePrintTime = false;
+            printTime(t, true);
             switch(type) {
             case 0: // year
                 lcd.setCursor(0, 0);
@@ -332,15 +360,11 @@ void settingTime(Time t) {
 void printJobs() {
     lcd.clear();
     lcd.setCursor(0, 0);
-    Job job;
-    int jobID = 0;
-    int eeAddress = 0;
-    char line[16];
-    boolean rerender = true;
+    jobID = 0;
+    eeAddress = 0;
+    rerender = true;
 
-    float waiting = 0;
-    int hour, minute, second;
-    long remain;
+    waiting = 0;
     while (1) {
         waiting += 0.1;
         if (waiting > timeout) {
@@ -405,25 +429,20 @@ void printJobs() {
 }
 
 void editJob(int jobID, int eeAddress) {
-    Job job;
     EEPROM.get(eeAddress, job);
-    boolean rerender = true;
-    int step = 0;
-    char line[16];
+    rerender = true;
+    step = 0;
     lcd.blink();
-    float waiting = 0;
-    long remain;
-    int hour = job.schedAt / 3600;
+    waiting = 0;
+    hour = job.schedAt / 3600;
     remain = job.schedAt % 3600;
-    int minute = remain / 60;
-    int second = remain % 60;
+    minute = remain / 60;
+    second = remain % 60;
 
-    int duration_hour = job.duration / 3600;
+    duration_hour = job.duration / 3600;
     remain = job.duration % 3600;
-    int duration_minute = remain / 60;
-    int duration_second = remain % 60;
-    String dayStr;
-    Time::Day day;
+    duration_minute = remain / 60;
+    duration_second = remain % 60;
     while (1) {
         waiting += 0.1;
         if (waiting > timeout) {
@@ -587,16 +606,15 @@ void editJob(int jobID, int eeAddress) {
 }
 
 void resetJobs() {
-    Job job = {
-        0, // duration
-        0, // schedAt
-        0, // port
-        8, // repeat
-        false, // running
-        false // enable
-    };
-    int eeAddress = 0;
-    for (int i=0; i<=TOTAL_JOBS; i++) {
+    job.duration = 0; // running time second
+    job.schedAt = 0; // schedule at second
+    job.port = 0; // the output port
+    job.repeat = 8; // every day, once
+    job.running = false;
+    job.enable = false; // enable or disable
+
+    eeAddress = 0;
+    for (i=0; i<=TOTAL_JOBS; i++) {
         EEPROM.put(eeAddress, job);
         eeAddress += sizeof(job);
     }
@@ -604,7 +622,7 @@ void resetJobs() {
 }
 
 void initRelay() {
-    for (int i=0;i<TOTAL_PORT;i++) {
+    for (i=0;i<TOTAL_PORT;i++) {
         pinMode(OUTPUT_PINS[i], OUTPUT);
         digitalWrite(OUTPUT_PINS[i], RELAY_NORUN);
         RELAY_STATE[i] = RELAY_NORUN;
@@ -626,16 +644,13 @@ void initTime() {
 }
 
 void checkAndRunJobs() {
-    int eeAddress = 0;
-    Job job;
-    Time::Day day;
-    boolean ports[TOTAL_PORT];
-    for (int i=0;i<TOTAL_PORT;i++) {
+    eeAddress = 0;
+    for (i=0;i<TOTAL_PORT;i++) {
         ports[i] = RELAY_NORUN;
     }
 
-    long current = long(currentTime.hr) * 3600 + long(currentTime.min) * 60 + long(currentTime.sec);
-    for (int i=0; i<=TOTAL_JOBS; i++) {
+    current = long(currentTime.hr) * 3600 + long(currentTime.min) * 60 + long(currentTime.sec);
+    for (i=0; i<=TOTAL_JOBS; i++) {
         EEPROM.get(eeAddress, job);
         eeAddress += sizeof(job);
         if (!job.enable) {
@@ -662,7 +677,7 @@ void checkAndRunJobs() {
     }
 
 
-    for (int i=0;i<TOTAL_PORT;i++) {
+    for (i=0;i<TOTAL_PORT;i++) {
         if (RELAY_STATE[i] != ports[i]) {
             digitalWrite(OUTPUT_PINS[i], ports[i]);
             RELAY_STATE[i] = ports[i];
@@ -679,10 +694,10 @@ void readAndPrintTime() {
 }
 
 int showMenu() {
-    int select = 0;
-    boolean rerender = true;
+    select = 0;
+    rerender = true;
+    waiting = 0;
     lcd.blink();
-    float waiting = 0;
     while (1) {
         waiting += 0.1;
         if (waiting > timeout) {
