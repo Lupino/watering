@@ -88,15 +88,15 @@ void readAndPrintTime();
 
 String dayAsString(const Time::Day day) {
     switch (day) {
-        case Time::kSunday: return "Sun";
-        case Time::kMonday: return "Mon";
-        case Time::kTuesday: return "Tue";
-        case Time::kWednesday: return "Wed";
-        case Time::kThursday: return "Thu";
-        case Time::kFriday: return "Fri";
-        case Time::kSaturday: return "Sat";
+        case Time::kSunday: return F("Sun");
+        case Time::kMonday: return F("Mon");
+        case Time::kTuesday: return F("Tue");
+        case Time::kWednesday: return F("Wed");
+        case Time::kThursday: return F("Thu");
+        case Time::kFriday: return F("Fri");
+        case Time::kSaturday: return F("Sat");
     }
-    return "err";
+    return F("err");
 }
 
 boolean backToMenu() {
@@ -122,7 +122,7 @@ void printTime(Time nextTime, boolean force) {
         if (nextTime.sec != cacheTime.min) {
             lcd.setCursor(6, 1);
             if (nextTime.sec < 10) {
-                lcd.print("0");
+                lcd.print(F("0"));
                 lcd.print(nextTime.sec);
             } else {
                 lcd.print(nextTime.sec);
@@ -385,9 +385,9 @@ void printJobs() {
             lcd.print(line);
             lcd.setCursor(13, 0);
             if (job.enable) {
-                lcd.print(" on");
+                lcd.print(F(" on"));
             } else {
-                lcd.print("off");
+                lcd.print(F("off"));
             }
 
             hour = job.duration / 3600;
@@ -465,9 +465,9 @@ void editJob(int jobID, int eeAddress) {
                     lcd.print(line);
                     lcd.setCursor(13, 0);
                     if (job.enable) {
-                        lcd.print(" on");
+                        lcd.print(F(" on"));
                     } else {
-                        lcd.print("off");
+                        lcd.print(F("off"));
                     }
 
                     snprintf(line, sizeof(line), "durat: %02d:%02d:%02d", duration_hour, duration_minute, duration_second);
@@ -477,14 +477,14 @@ void editJob(int jobID, int eeAddress) {
                 case 7:
                 case 8:
                     lcd.setCursor(0, 0);
-                    lcd.print("repeat:");
+                    lcd.print(F("repeat:"));
                     lcd.setCursor(13, 0);
                     switch (job.repeat) {
                     case 0:
-                        lcd.print(" on");
+                        lcd.print(F(" on"));
                         break;
                     case 8:
-                        lcd.print("off");
+                        lcd.print(F("off"));
                         break;
                     default:
                         day = static_cast<Time::Day>(job.repeat);
@@ -493,7 +493,7 @@ void editJob(int jobID, int eeAddress) {
                         break;
                     }
                     lcd.setCursor(0, 1);
-                    lcd.print("port: ");
+                    lcd.print(F("port: "));
                     lcd.print(job.port + 1);
                     break;
             }
@@ -634,7 +634,7 @@ void initLCD() {
     lcd.begin();
     // Turn on the blacklight and print a message.
     lcd.backlight();
-    lcd.print("Starting...");
+    lcd.print(F("Starting..."));
     backlightTimer = timer.setTimeout(10000, closeLCDBacklight);
 }
 
@@ -710,26 +710,26 @@ int showMenu() {
             case 0:
                 lcd.clear();
                 lcd.setCursor(0, 0);
-                lcd.print("1. show time");
+                lcd.print(F("1. show time"));
                 lcd.setCursor(0, 1);
-                lcd.print("2. config time");
+                lcd.print(F("2. config time"));
                 lcd.setCursor(0, 0);
                 break;
             case 1:
                 lcd.clear();
                 lcd.setCursor(0, 0);
-                lcd.print("2. config time");
+                lcd.print(F("2. config time"));
                 lcd.setCursor(0, 1);
-                lcd.print("3. show jobs");
+                lcd.print(F("3. show jobs"));
                 lcd.setCursor(0, 0);
                 break;
             case 2:
             case 3:
                 lcd.clear();
                 lcd.setCursor(0, 0);
-                lcd.print("3. show jobs");
+                lcd.print(F("3. show jobs"));
                 lcd.setCursor(0, 1);
-                lcd.print("4. reset");
+                lcd.print(F("4. reset"));
                 lcd.setCursor(0, select % 2);
                 break;
             }
