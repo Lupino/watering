@@ -81,7 +81,7 @@ int jobID;
 boolean currentState;
 
 const char format_0[] PROGMEM = "%04d-%02d-%02d %s";
-const char format_1[] PROGMEM = "%02d:%02d:%02d";
+const char format_1[] PROGMEM = "%02d:%02d:%02d %d";
 const char format_2[] PROGMEM = "#%02d %02d:%02d:%02d";
 const char format_3[] PROGMEM = "durat: %02d:%02d:%02d";
 const char* const formatTable[] PROGMEM = { format_0, format_1, format_2, format_3 };
@@ -95,6 +95,12 @@ void readAndPrintTime();
 char* getFormat(int i) {
     strcpy_P(line, (char*)pgm_read_word(&(formatTable[i]))); // Necessary casts and dereferencing, just copy.
     return line;
+}
+
+int freeRam () {
+  extern int __heap_start, *__brkval;
+  int v;
+  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
 }
 
 String dayAsString(const Time::Day day) {
@@ -151,7 +157,7 @@ void printTime(Time nextTime, boolean force) {
     lcd.setCursor(0, 0);
     lcd.print(line);
 
-    snprintf(line, sizeof(line), getFormat(1), nextTime.hr, nextTime.min, nextTime.sec);
+    snprintf(line, sizeof(line), getFormat(1), nextTime.hr, nextTime.min, nextTime.sec, freeRam());
     lcd.setCursor(0, 1);
     lcd.print(line);
     cacheTime = nextTime;
