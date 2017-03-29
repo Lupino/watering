@@ -80,11 +80,22 @@ boolean isChangedSecond;
 int jobID;
 boolean currentState;
 
+const char format_0[] PROGMEM = "%04d-%02d-%02d %s";
+const char format_1[] PROGMEM = "%02d:%02d:%02d";
+const char format_2[] PROGMEM = "#%02d %02d:%02d:%02d";
+const char format_3[] PROGMEM = "durat: %02d:%02d:%02d";
+const char* const formatTable[] PROGMEM = { format_0, format_1, format_2, format_3 };
+
 void initLCD();
 void initRelay();
 void initTime();
 void checkAndRunJobs();
 void readAndPrintTime();
+
+char* getFormat(int i) {
+    strcpy_P(line, (char*)pgm_read_word(&(formatTable[i]))); // Necessary casts and dereferencing, just copy.
+    return line;
+}
 
 String dayAsString(const Time::Day day) {
     switch (day) {
@@ -136,11 +147,11 @@ void printTime(Time nextTime, boolean force) {
 
     // Format the time and date and insert into the temporary buffer.
     // Print the formatted string to serial so we can see the time.
-    snprintf(line, sizeof(line), "%04d-%02d-%02d %s", nextTime.yr, nextTime.mon, nextTime.date, dayStr.c_str());
+    snprintf(line, sizeof(line), getFormat(0), nextTime.yr, nextTime.mon, nextTime.date, dayStr.c_str());
     lcd.setCursor(0, 0);
     lcd.print(line);
 
-    snprintf(line, sizeof(line), "%02d:%02d:%02d", nextTime.hr, nextTime.min, nextTime.sec);
+    snprintf(line, sizeof(line), getFormat(1), nextTime.hr, nextTime.min, nextTime.sec);
     lcd.setCursor(0, 1);
     lcd.print(line);
     cacheTime = nextTime;
@@ -380,7 +391,7 @@ void printJobs() {
             remain = job.schedAt % 3600;
             minute = remain / 60;
             second = remain % 60;
-            snprintf(line, sizeof(line), "#%02d %02d:%02d:%02d", jobID, hour, minute, second);
+            snprintf(line, sizeof(line), getFormat(2), jobID, hour, minute, second);
             lcd.setCursor(0, 0);
             lcd.print(line);
             lcd.setCursor(13, 0);
@@ -394,7 +405,7 @@ void printJobs() {
             remain = job.duration % 3600;
             minute = remain / 60;
             second = remain % 60;
-            snprintf(line, sizeof(line), "durat: %02d:%02d:%02d", hour, minute, second);
+            snprintf(line, sizeof(line), getFormat(3), hour, minute, second);
             lcd.setCursor(0, 1);
             lcd.print(line);
         }
@@ -460,7 +471,7 @@ void editJob(int jobID, int eeAddress) {
                 case 4:
                 case 5:
                 case 6:
-                    snprintf(line, sizeof(line), "#%02d %02d:%02d:%02d", jobID, hour, minute, second);
+                    snprintf(line, sizeof(line), getFormat(2), jobID, hour, minute, second);
                     lcd.setCursor(0, 0);
                     lcd.print(line);
                     lcd.setCursor(13, 0);
@@ -470,7 +481,7 @@ void editJob(int jobID, int eeAddress) {
                         lcd.print(F("off"));
                     }
 
-                    snprintf(line, sizeof(line), "durat: %02d:%02d:%02d", duration_hour, duration_minute, duration_second);
+                    snprintf(line, sizeof(line), getFormat(3), duration_hour, duration_minute, duration_second);
                     lcd.setCursor(0, 1);
                     lcd.print(line);
                     break;
