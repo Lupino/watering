@@ -3,7 +3,16 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 #include <EEPROM.h>
+#include <AtomThreads.h>
+
 #include <SimpleTimer.h>
+
+#define IDLE_STACK_SIZE_BYTES 128
+#define MAIN_STACK_SIZE_BYTES 204
+#define DEFAULT_THREAD_PRIO 16
+static ATOM_TCB main_tcb;
+static uint8_t main_thread_stack[MAIN_STACK_SIZE_BYTES];
+static uint8_t idle_thread_stack[IDLE_STACK_SIZE_BYTES];
 
 SimpleTimer timer;
 
@@ -163,7 +172,24 @@ void printTime(Time nextTime, boolean force) {
     cacheTime = nextTime;
 }
 
-void setup() {
+void setup(){
+	int8_t status;
+	SP = (int)&idle_thread_stack[(IDLE_STACK_SIZE_BYTES/2) - 1];
+	status = atomOSInit(&idle_thread_stack[0], IDLE_STACK_SIZE_BYTES, FALSE);
+	if (status == ATOM_OK) {
+        avrInitSystemTickTimer();
+        status = atomThreadCreate(&main_tcb,
+                     DEFAULT_THREAD_PRIO, main_thread_func, 0,
+                     &main_thread_stack[0],
+                     MAIN_STACK_SIZE_BYTES,
+                     TRUE);
+        if (status == ATOM_OK) {
+            atomOSStart();
+        }
+	}
+}
+
+static void main_thread_func (uint32_t data) {
     initLCD();
 
     initRelay();
@@ -180,6 +206,10 @@ void setup() {
 
     timer.setInterval(1000, checkAndRunJobs);
     timer.setInterval(250, readAndPrintTime);
+
+    while (1) {
+        loop();
+    }
 }
 
 boolean debounce(int BUTTON, boolean last) {
