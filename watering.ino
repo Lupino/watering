@@ -5,16 +5,23 @@
 #include <EEPROM.h>
 #include <AtomThreads.h>
 
-#include <SimpleTimer.h>
-
 #define IDLE_STACK_SIZE_BYTES 128
 #define MAIN_STACK_SIZE_BYTES 204
+#define RUNNER_STACK_SIZE_BYTES 128
+#define TIMER_STACK_SIZE_BYTES 128
+#define BACKLIGHT_STACK_SIZE_BYTES 128
 #define DEFAULT_THREAD_PRIO 16
 static ATOM_TCB main_tcb;
+static ATOM_TCB runner_tcb;
+static ATOM_TCB timer_tcb;
+static ATOM_TCB backlight_tcb;
 static uint8_t main_thread_stack[MAIN_STACK_SIZE_BYTES];
+static uint8_t runner_thread_stack[RUNNER_STACK_SIZE_BYTES];
+static uint8_t timer_thread_stack[TIMER_STACK_SIZE_BYTES];
+static uint8_t backlight_thread_stack[BACKLIGHT_STACK_SIZE_BYTES];
 static uint8_t idle_thread_stack[IDLE_STACK_SIZE_BYTES];
-
-SimpleTimer timer;
+uint8_t status;
+unsigned long backlight_timer;
 
 // Set the LCD address to 0x27 for a 16 chars and 2 line display
 LiquidCrystal_I2C lcd(0x3f, 16, 2);
@@ -48,8 +55,6 @@ boolean forcePrintTime = false;
 int menuType = 0;
 Time currentTime = rtc.time();
 Time cacheTime = currentTime;
-
-int backlightTimer = -1;
 
 struct Job {
     long duration; // running time second
@@ -128,7 +133,7 @@ String dayAsString(const Time::Day day) {
 boolean backToMenu() {
     count = 0;
     while (count < 10) {
-        delay(100);
+        atomTimerDelay(SYSTEM_TICKS_PER_SEC / 10);
         currentButton1 = debounce(BUTTON_1, lastButton1);
         if (currentButton1 == LOW) {
             break;
@@ -173,7 +178,6 @@ void printTime(Time nextTime, boolean force) {
 }
 
 void setup(){
-	int8_t status;
 	SP = (int)&idle_thread_stack[(IDLE_STACK_SIZE_BYTES/2) - 1];
 	status = atomOSInit(&idle_thread_stack[0], IDLE_STACK_SIZE_BYTES, FALSE);
 	if (status == ATOM_OK) {
@@ -182,14 +186,14 @@ void setup(){
                      DEFAULT_THREAD_PRIO, main_thread_func, 0,
                      &main_thread_stack[0],
                      MAIN_STACK_SIZE_BYTES,
-                     TRUE);
+                     FALSE);
         if (status == ATOM_OK) {
             atomOSStart();
         }
 	}
 }
 
-static void main_thread_func (uint32_t data) {
+static void main_thread_func (uint32_t) {
     initLCD();
 
     initRelay();
@@ -204,18 +208,56 @@ static void main_thread_func (uint32_t data) {
     pinMode(BUTTON_1, INPUT);
     pinMode(BUTTON_2, INPUT);
 
-    timer.setInterval(1000, checkAndRunJobs);
-    timer.setInterval(250, readAndPrintTime);
+    atomThreadCreate(&runner_tcb,
+        DEFAULT_THREAD_PRIO, runner_thread_func, 0,
+        &runner_thread_stack[0],
+        RUNNER_STACK_SIZE_BYTES,
+        FALSE);
+
+    atomThreadCreate(&timer_tcb,
+        DEFAULT_THREAD_PRIO, timer_thread_func, 0,
+        &timer_thread_stack[0],
+        TIMER_STACK_SIZE_BYTES,
+        FALSE);
+
+    atomThreadCreate(&backlight_tcb,
+        DEFAULT_THREAD_PRIO, backlight_thread_func, 0,
+        &backlight_thread_stack[0],
+        BACKLIGHT_STACK_SIZE_BYTES,
+        FALSE);
 
     while (1) {
         loop();
     }
 }
 
+static void runner_thread_func(uint32_t) {
+    while (1) {
+        checkAndRunJobs();
+        atomTimerDelay(SYSTEM_TICKS_PER_SEC);
+    }
+}
+
+static void timer_thread_func(uint32_t) {
+    while (1) {
+        readAndPrintTime();
+        atomTimerDelay(SYSTEM_TICKS_PER_SEC / 4);
+    }
+}
+
+static void backlight_thread_func(uint32_t) {
+    while (1) {
+        if (backlight_timer + 10000 < millis()) {
+            closeLCDBacklight();
+        }
+        atomTimerDelay(SYSTEM_TICKS_PER_SEC);
+    }
+}
+
 boolean debounce(int BUTTON, boolean last) {
     currentState = digitalRead(BUTTON);
     if (last != currentState) {
-        delay(5);
+        atomTimerDelay(SYSTEM_TICKS_PER_SEC / 200);
         currentState = digitalRead(BUTTON);
     }
 
@@ -388,7 +430,7 @@ void settingTime(Time t) {
             t.sec = currentTime.sec;
         }
 
-        delay(100);
+        atomTimerDelay(SYSTEM_TICKS_PER_SEC / 10);
     }
     lcd.noBlink();
     if (isChanged) {
@@ -469,7 +511,7 @@ void printJobs() {
             rerender = true;
         }
         lastButton1 = currentButton1;
-        delay(100);
+        atomTimerDelay(SYSTEM_TICKS_PER_SEC / 10);
     }
     menuType = 0;
     lcd.clear();
@@ -643,7 +685,7 @@ void editJob(int jobID, int eeAddress) {
             }
         }
         lastButton1 = currentButton1;
-        delay(100);
+        atomTimerDelay(SYSTEM_TICKS_PER_SEC / 10);
     }
     lcd.noBlink();
 
@@ -679,10 +721,10 @@ void initRelay() {
 void initLCD() {
     // initialize the LCD
     lcd.begin();
-    // Turn on the blacklight and print a message.
+    // Turn on the backlight and print a message.
     lcd.backlight();
     lcd.print(F("Starting..."));
-    backlightTimer = timer.setTimeout(10000, closeLCDBacklight);
+    backlight_timer = millis();
 }
 
 void initTime() {
@@ -797,7 +839,7 @@ int showMenu() {
             break;
         }
         lastButton1 = currentButton1;
-        delay(100);
+        atomTimerDelay(SYSTEM_TICKS_PER_SEC / 10);
     }
     lcd.noBlink();
     lcd.clear();
@@ -810,17 +852,14 @@ void closeLCDBacklight() {
 
 // Loop and print the time every second.
 void loop() {
-    timer.run();
     switch (menuType) {
     case 1:
-        timer.deleteTimer(backlightTimer);
         settingTime(currentTime);
-        backlightTimer = timer.setTimeout(10000, closeLCDBacklight);
+        backlight_timer = millis();
         break;
     case 2:
-        timer.deleteTimer(backlightTimer);
         printJobs();
-        backlightTimer = timer.setTimeout(10000, closeLCDBacklight);
+        backlight_timer = millis();
         break;
     case 3:
         resetJobs();
@@ -831,11 +870,10 @@ void loop() {
     if (lastButton1 == LOW && currentButton1 == HIGH) {
         lastButton1 = currentButton1;
         lcd.backlight();
-        timer.deleteTimer(backlightTimer);
         menuType = showMenu();
-        backlightTimer = timer.setTimeout(10000, closeLCDBacklight);
+        backlight_timer = millis();
         forcePrintTime = true;
     }
     lastButton1 = currentButton1;
-    delay(100);
+    atomTimerDelay(SYSTEM_TICKS_PER_SEC / 10);
 }
