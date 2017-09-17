@@ -6,19 +6,19 @@
 #include <AtomThreads.h>
 
 #define IDLE_STACK_SIZE_BYTES 128
-#define MAIN_STACK_SIZE_BYTES 204
-#define RUNNER_STACK_SIZE_BYTES 128
-#define TIMER_STACK_SIZE_BYTES 128
+#define MAIN_STACK_SIZE_BYTES 256
+#define RUNNER_STACK_SIZE_BYTES 64
+#define LIGHT_STACK_SIZE_BYTES 64
 #define DEFAULT_THREAD_PRIO 16
 static ATOM_TCB main_tcb;
 static ATOM_TCB runner_tcb;
-static ATOM_TCB timer_tcb;
+static ATOM_TCB light_tcb;
 static uint8_t main_thread_stack[MAIN_STACK_SIZE_BYTES];
 static uint8_t runner_thread_stack[RUNNER_STACK_SIZE_BYTES];
-static uint8_t timer_thread_stack[TIMER_STACK_SIZE_BYTES];
+static uint8_t light_thread_stack[LIGHT_STACK_SIZE_BYTES];
 static uint8_t idle_thread_stack[IDLE_STACK_SIZE_BYTES];
 uint8_t status;
-static ATOM_TIMER backlight_timer_cb;
+unsigned long light_timer;
 
 // Set the LCD address to 0x27 for a 16 chars and 2 line display
 LiquidCrystal_I2C lcd(0x3f, 16, 2);
@@ -73,7 +73,9 @@ Time::Day day;
 boolean ports[TOTAL_PORT];
 long current;
 int step;
-char line[16];
+char line1[17];
+char line2[17];
+char format[17];
 long remain;
 int hour;
 int minute;
@@ -81,7 +83,7 @@ int second;
 int duration_hour;
 int duration_minute;
 int duration_second;
-String dayStr;
+char dayStr[3];
 int i;
 int count;
 int type;
@@ -92,10 +94,21 @@ int jobID;
 boolean currentState;
 
 const char format_0[] PROGMEM = "%04d-%02d-%02d %s";
-const char format_1[] PROGMEM = "%02d:%02d:%02d %d";
-const char format_2[] PROGMEM = "#%02d %02d:%02d:%02d";
+const char format_1[] PROGMEM = "%02d:%02d:%02d";
+const char format_2[] PROGMEM = "#%02d %02d:%02d:%02d %s";
 const char format_3[] PROGMEM = "durat: %02d:%02d:%02d";
 const char* const formatTable[] PROGMEM = { format_0, format_1, format_2, format_3 };
+
+const char week_sun[] PROGMEM = "Sun";
+const char week_mon[] PROGMEM = "Mon";
+const char week_tue[] PROGMEM = "Tue";
+const char week_wed[] PROGMEM = "Wed";
+const char week_thu[] PROGMEM = "Thu";
+const char week_fri[] PROGMEM = "Fri";
+const char week_sat[] PROGMEM = "Sat";
+const char week_err[] PROGMEM = "Err";
+const char* const weekNames[] PROGMEM = { week_sun, week_mon, week_tue, week_wed,
+                week_thu, week_fri, week_sat, week_err };
 
 void initLCD();
 void initRelay();
@@ -104,27 +117,39 @@ void checkAndRunJobs();
 void readAndPrintTime();
 
 char* getFormat(int i) {
-    strcpy_P(line, (char*)pgm_read_word(&(formatTable[i]))); // Necessary casts and dereferencing, just copy.
-    return line;
+    strcpy_P(format, (char*)pgm_read_word(&(formatTable[i]))); // Necessary casts and dereferencing, just copy.
+    return format;
 }
 
-int freeRam () {
-  extern int __heap_start, *__brkval;
-  int v;
-  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
+void getWeekName(int i) {
+    strcpy_P(dayStr, (char*)pgm_read_word(&(weekNames[i]))); // Necessary casts and dereferencing, just copy.
 }
 
-String dayAsString(const Time::Day day) {
+// int freeRam () {
+//   extern int __heap_start, *__brkval;
+//   int v;
+//   return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
+// }
+
+void dayAsString(const Time::Day day) {
     switch (day) {
-        case Time::kSunday: return F("Sun");
-        case Time::kMonday: return F("Mon");
-        case Time::kTuesday: return F("Tue");
-        case Time::kWednesday: return F("Wed");
-        case Time::kThursday: return F("Thu");
-        case Time::kFriday: return F("Fri");
-        case Time::kSaturday: return F("Sat");
+        case Time::kSunday:
+            return getWeekName(0);
+        case Time::kMonday:
+            return getWeekName(1);
+        case Time::kTuesday:
+            return getWeekName(2);
+        case Time::kWednesday:
+            return getWeekName(3);
+        case Time::kThursday:
+            return getWeekName(4);
+        case Time::kFriday:
+            return getWeekName(5);
+        case Time::kSaturday:
+            return getWeekName(6);
+        default:
+            return getWeekName(7);
     }
-    return F("err");
 }
 
 boolean backToMenu() {
@@ -160,18 +185,23 @@ void printTime(Time nextTime, boolean force) {
         return;
     }
     // Name the day of the week.
-    dayStr = dayAsString(nextTime.day);
+    dayAsString(nextTime.day);
 
     // Format the time and date and insert into the temporary buffer.
     // Print the formatted string to serial so we can see the time.
-    snprintf(line, sizeof(line), getFormat(0), nextTime.yr, nextTime.mon, nextTime.date, dayStr.c_str());
-    lcd.setCursor(0, 0);
-    lcd.print(line);
+    snprintf(line1, sizeof(line1), getFormat(0), nextTime.yr, nextTime.mon, nextTime.date, dayStr);
+    snprintf(line2, sizeof(line2), getFormat(1), nextTime.hr, nextTime.min, nextTime.sec/*, freeRam()*/);
 
-    snprintf(line, sizeof(line), getFormat(1), nextTime.hr, nextTime.min, nextTime.sec, freeRam());
-    lcd.setCursor(0, 1);
-    lcd.print(line);
+    lcdPrint();
+
     cacheTime = nextTime;
+}
+
+void lcdPrint() {
+    lcd.setCursor(0, 0);
+    lcd.print(line1);
+    lcd.setCursor(0, 1);
+    lcd.print(line2);
 }
 
 void setup(){
@@ -192,6 +222,7 @@ void setup(){
 
 static void main_thread_func (uint32_t) {
     initLCD();
+    atomTimerDelay(SYSTEM_TICKS_PER_SEC);
 
     initRelay();
     initTime();
@@ -206,15 +237,15 @@ static void main_thread_func (uint32_t) {
     pinMode(BUTTON_2, INPUT);
 
     atomThreadCreate(&runner_tcb,
-        DEFAULT_THREAD_PRIO, runner_thread_func, 0,
+        4, runner_thread_func, 0,
         &runner_thread_stack[0],
         RUNNER_STACK_SIZE_BYTES,
         FALSE);
 
-    atomThreadCreate(&timer_tcb,
-        DEFAULT_THREAD_PRIO, timer_thread_func, 0,
-        &timer_thread_stack[0],
-        TIMER_STACK_SIZE_BYTES,
+    atomThreadCreate(&light_tcb,
+        1, light_thread_func, 0,
+        &light_thread_stack[0],
+        LIGHT_STACK_SIZE_BYTES,
         FALSE);
 
     while (1) {
@@ -229,23 +260,19 @@ static void runner_thread_func(uint32_t) {
     }
 }
 
-static void timer_thread_func(uint32_t) {
+static void light_thread_func(uint32_t) {
     while (1) {
-        readAndPrintTime();
-        atomTimerDelay(SYSTEM_TICKS_PER_SEC / 4);
+        if (light_timer + 10000 > millis()) {
+            lcd.backlight();
+        } else {
+            lcd.noBacklight();
+        }
+        atomTimerDelay(SYSTEM_TICKS_PER_SEC);
     }
 }
 
-static void backlight_timer_func (POINTER) {
-    lcd.noBacklight();
-}
-
 void activeLCDBackLight() {
-    atomTimerCancel(&backlight_timer_cb);
-    backlight_timer_cb.cb_ticks = 10 * SYSTEM_TICKS_PER_SEC;
-    backlight_timer_cb.cb_func = backlight_timer_func;
-    atomTimerRegister(&backlight_timer_cb);
-    lcd.backlight();
+    light_timer = millis();
 }
 
 boolean debounce(int BUTTON, boolean last) {
@@ -467,23 +494,18 @@ void printJobs() {
             remain = job.schedAt % 3600;
             minute = remain / 60;
             second = remain % 60;
-            snprintf(line, sizeof(line), getFormat(2), jobID, hour, minute, second);
-            lcd.setCursor(0, 0);
-            lcd.print(line);
-            lcd.setCursor(13, 0);
             if (job.enable) {
-                lcd.print(F(" on"));
+                snprintf(line1, sizeof(line1), getFormat(2), jobID, hour, minute, second, "on");
             } else {
-                lcd.print(F("off"));
+                snprintf(line1, sizeof(line1), getFormat(2), jobID, hour, minute, second, "off");
             }
 
             hour = job.duration / 3600;
             remain = job.duration % 3600;
             minute = remain / 60;
             second = remain % 60;
-            snprintf(line, sizeof(line), getFormat(3), hour, minute, second);
-            lcd.setCursor(0, 1);
-            lcd.print(line);
+            snprintf(line2, sizeof(line2), getFormat(3), hour, minute, second);
+            lcdPrint();
         }
 
         currentButton2 = debounce(BUTTON_2, lastButton2);
@@ -547,19 +569,13 @@ void editJob(int jobID, int eeAddress) {
                 case 4:
                 case 5:
                 case 6:
-                    snprintf(line, sizeof(line), getFormat(2), jobID, hour, minute, second);
-                    lcd.setCursor(0, 0);
-                    lcd.print(line);
-                    lcd.setCursor(13, 0);
                     if (job.enable) {
-                        lcd.print(F(" on"));
+                        snprintf(line1, sizeof(line1), getFormat(2), jobID, hour, minute, second, "on");
                     } else {
-                        lcd.print(F("off"));
+                        snprintf(line1, sizeof(line1), getFormat(2), jobID, hour, minute, second, "off");
                     }
-
-                    snprintf(line, sizeof(line), getFormat(3), duration_hour, duration_minute, duration_second);
-                    lcd.setCursor(0, 1);
-                    lcd.print(line);
+                    snprintf(line2, sizeof(line2), getFormat(3), duration_hour, duration_minute, duration_second);
+                    lcdPrint();
                     break;
                 case 7:
                 case 8:
@@ -575,8 +591,8 @@ void editJob(int jobID, int eeAddress) {
                         break;
                     default:
                         day = static_cast<Time::Day>(job.repeat);
-                        dayStr = dayAsString(day);
-                        lcd.print(dayStr.c_str());
+                        dayAsString(day);
+                        lcd.print(dayStr);
                         break;
                     }
                     lcd.setCursor(0, 1);
@@ -844,6 +860,7 @@ int showMenu() {
 
 // Loop and print the time every second.
 void loop() {
+    readAndPrintTime();
     switch (menuType) {
     case 1:
         settingTime(currentTime);
@@ -863,5 +880,5 @@ void loop() {
         forcePrintTime = true;
     }
     lastButton1 = currentButton1;
-    atomTimerDelay(SYSTEM_TICKS_PER_SEC / 10);
+    atomTimerDelay(SYSTEM_TICKS_PER_SEC / 100);
 }
