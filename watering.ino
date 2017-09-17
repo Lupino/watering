@@ -175,9 +175,9 @@ void printTime(Time nextTime, boolean force) {
 }
 
 void setup(){
-	SP = (int)&idle_thread_stack[(IDLE_STACK_SIZE_BYTES/2) - 1];
-	status = atomOSInit(&idle_thread_stack[0], IDLE_STACK_SIZE_BYTES, FALSE);
-	if (status == ATOM_OK) {
+    SP = (int)&idle_thread_stack[(IDLE_STACK_SIZE_BYTES/2) - 1];
+    status = atomOSInit(&idle_thread_stack[0], IDLE_STACK_SIZE_BYTES, FALSE);
+    if (status == ATOM_OK) {
         avrInitSystemTickTimer();
         status = atomThreadCreate(&main_tcb,
                      DEFAULT_THREAD_PRIO, main_thread_func, 0,
@@ -187,7 +187,7 @@ void setup(){
         if (status == ATOM_OK) {
             atomOSStart();
         }
-	}
+    }
 }
 
 static void main_thread_func (uint32_t) {
