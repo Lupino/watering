@@ -9,19 +9,16 @@
 #define MAIN_STACK_SIZE_BYTES 204
 #define RUNNER_STACK_SIZE_BYTES 128
 #define TIMER_STACK_SIZE_BYTES 128
-#define BACKLIGHT_STACK_SIZE_BYTES 128
 #define DEFAULT_THREAD_PRIO 16
 static ATOM_TCB main_tcb;
 static ATOM_TCB runner_tcb;
 static ATOM_TCB timer_tcb;
-static ATOM_TCB backlight_tcb;
 static uint8_t main_thread_stack[MAIN_STACK_SIZE_BYTES];
 static uint8_t runner_thread_stack[RUNNER_STACK_SIZE_BYTES];
 static uint8_t timer_thread_stack[TIMER_STACK_SIZE_BYTES];
-static uint8_t backlight_thread_stack[BACKLIGHT_STACK_SIZE_BYTES];
 static uint8_t idle_thread_stack[IDLE_STACK_SIZE_BYTES];
 uint8_t status;
-unsigned long backlight_timer;
+static ATOM_TIMER backlight_timer_cb;
 
 // Set the LCD address to 0x27 for a 16 chars and 2 line display
 LiquidCrystal_I2C lcd(0x3f, 16, 2);
@@ -220,12 +217,6 @@ static void main_thread_func (uint32_t) {
         TIMER_STACK_SIZE_BYTES,
         FALSE);
 
-    atomThreadCreate(&backlight_tcb,
-        DEFAULT_THREAD_PRIO, backlight_thread_func, 0,
-        &backlight_thread_stack[0],
-        BACKLIGHT_STACK_SIZE_BYTES,
-        FALSE);
-
     while (1) {
         loop();
     }
@@ -245,13 +236,16 @@ static void timer_thread_func(uint32_t) {
     }
 }
 
-static void backlight_thread_func(uint32_t) {
-    while (1) {
-        if (backlight_timer + 10000 < millis()) {
-            closeLCDBacklight();
-        }
-        atomTimerDelay(SYSTEM_TICKS_PER_SEC);
-    }
+static void backlight_timer_func (POINTER) {
+    lcd.noBacklight();
+}
+
+void activeLCDBackLight() {
+    atomTimerCancel(&backlight_timer_cb);
+    backlight_timer_cb.cb_ticks = 10 * SYSTEM_TICKS_PER_SEC;
+    backlight_timer_cb.cb_func = backlight_timer_func;
+    atomTimerRegister(&backlight_timer_cb);
+    lcd.backlight();
 }
 
 boolean debounce(int BUTTON, boolean last) {
@@ -259,6 +253,10 @@ boolean debounce(int BUTTON, boolean last) {
     if (last != currentState) {
         atomTimerDelay(SYSTEM_TICKS_PER_SEC / 200);
         currentState = digitalRead(BUTTON);
+    }
+
+    if (last == LOW && currentState == HIGH) {
+        activeLCDBackLight();
     }
 
     return currentState;
@@ -721,10 +719,8 @@ void initRelay() {
 void initLCD() {
     // initialize the LCD
     lcd.begin();
-    // Turn on the backlight and print a message.
-    lcd.backlight();
+    activeLCDBackLight();
     lcd.print(F("Starting..."));
-    backlight_timer = millis();
 }
 
 void initTime() {
@@ -846,20 +842,14 @@ int showMenu() {
     return select;
 }
 
-void closeLCDBacklight() {
-    lcd.noBacklight();
-}
-
 // Loop and print the time every second.
 void loop() {
     switch (menuType) {
     case 1:
         settingTime(currentTime);
-        backlight_timer = millis();
         break;
     case 2:
         printJobs();
-        backlight_timer = millis();
         break;
     case 3:
         resetJobs();
@@ -869,9 +859,7 @@ void loop() {
     currentButton1 = debounce(BUTTON_1, lastButton1);
     if (lastButton1 == LOW && currentButton1 == HIGH) {
         lastButton1 = currentButton1;
-        lcd.backlight();
         menuType = showMenu();
-        backlight_timer = millis();
         forcePrintTime = true;
     }
     lastButton1 = currentButton1;
